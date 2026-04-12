@@ -61,11 +61,15 @@ function generateReport(address, submissions) {
   const salesStatus = score > 65 ? "RISING" : score > 50 ? "STABLE" : "DECLINING";
   const salesText = salesArr.map(s => `• ${s.year}: Sold for $${s.price.toLocaleString()}`).join("\n") + `\n\nTrend: Values have ${score > 65 ? "appreciated steadily" : "remained flat"} over the past ${currentYear - salesArr[0].year} years.`;
 
+  const py1 = Math.min(yearBuilt + 15 + (h%10), 2010);
+  const py2 = Math.min(yearBuilt + 25 + (h%15), 2015);
+  const py3 = Math.min(yearBuilt + 30 + (h%8), 2018);
+  const py4 = 2000 + (h%20);
   const permitTypes = [
-    `${yearBuilt+15+(h%10)}: Roof replacement — permit #${10000+(h%89999)}, completed by ${pick(["Miller Roofing","Apex Contractors","SunRoof Co."],h)} LLC.`,
-    `${yearBuilt+25+(h%15)}: Kitchen remodel — permit #${20000+(h%79999)}, owner-contracted.`,
-    `${yearBuilt+30+(h%8)}: HVAC replacement — permit #${30000+(h%69999)}, completed by ${pick(["CoolAir Services","ProClimate HVAC","TempRight Inc."],h+1)}.`,
-    `${2015+(h%8)}: Electrical panel upgrade — permit #${50000+(h%49999)}, completed by ${pick(["Volt Electric","PowerSafe Inc.","GridPro"],h+3)}.`,
+    `${py1}: Roof replacement — permit #${10000+(h%89999)}, completed by ${pick(["Miller Roofing","Apex Contractors","SunRoof Co."],h)} LLC.`,
+    `${py2}: Kitchen remodel — permit #${20000+(h%79999)}, owner-contracted.`,
+    `${py3}: HVAC replacement — permit #${30000+(h%69999)}, completed by ${pick(["CoolAir Services","ProClimate HVAC","TempRight Inc."],h+1)}.`,
+    `${py4}: Electrical panel upgrade — permit #${50000+(h%49999)}, completed by ${pick(["Volt Electric","PowerSafe Inc.","GridPro"],h+3)}.`,
   ];
   const permitsText = permitTypes.slice(0, 2+(h%3)).join("\n");
 
