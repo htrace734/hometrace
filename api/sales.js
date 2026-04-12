@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 module.exports = async function handler(req, res) {
   const { address } = req.query;
   if (!address) return res.status(400).json({ error: "Address required" });
@@ -17,3 +15,4 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
