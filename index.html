@@ -184,10 +184,17 @@ function App() {
       const saleDate = saleProp?.sale?.salesTransDate;
       const avm = saleProp?.avm?.amount?.value;
       const avmText = avm ? `\nEstimated current value (AVM): $${Number(avm).toLocaleString()}` : "";
-      const events = saleAmt ? [{ eventType: "sale", eventDate: saleDate || "2010-01-01", amount: { saleamt: saleAmt } }] : [];
+      // Build events from sale data or AVM
+      const events = [];
+      if (saleAmt && saleAmt > 0) {
+        events.push({ eventType: "sale", eventDate: saleDate || "2010-01-01", amount: { saleamt: saleAmt } });
+      }
+      // Add AVM as estimated current value
+      const avmLine = avm ? `\nEstimated current market value: $${Number(avm).toLocaleString()} (Automated Valuation)` : "";
 
       const overviewText = formatPropertyFromATTOM(prop) || `Property details not found in public records for this address.`;
-      const { text: salesText, status: salesStatus } = formatSalesFromATTOM(events);
+      const { text: salesRaw, status: salesStatus } = formatSalesFromATTOM(events);
+      const salesText = salesRaw + avmLine;
 
       const verdict = `This property ${score>65?"shows positive indicators":"requires careful review"} based on available data. ${events.length > 0 ? `${events.length} sales transaction(s) found in public records.` : "No sales history found in public records."} ${fallback.damageStatus !== "CLEAN RECORD" ? "Prior damage recorded — confirm all repairs were completed." : "No damage flags found in community records."} Always get a certified inspection before purchasing.`;
 
