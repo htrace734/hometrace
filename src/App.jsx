@@ -1,0 +1,428 @@
+import { useState } from “react”;
+
+const TABS = [“Search”, “Submit Info”];
+
+const SECTIONS = [
+{ key: “overview”, icon: “🏠”, title: “Property Overview” },
+{ key: “schools”, icon: “🎓”, title: “School District & Schools” },
+{ key: “sales”, icon: “💰”, title: “Sales & Price History” },
+{ key: “permits”, icon: “🔨”, title: “Permit & Renovation History” },
+{ key: “damage”, icon: “⚠️”, title: “Damage & Incident Records” },
+{ key: “risks”, icon: “🌊”, title: “Environmental & Risk Factors” },
+{ key: “neighborhood”, icon: “📍”, title: “Neighborhood Snapshot” },
+{ key: “community”, icon: “👥”, title: “Community Submissions” },
+{ key: “verdict”, icon: “✅”, title: “HomeTrace Verdict” },
+];
+
+function hashStr(str) {
+let h = 5381;
+for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
+return Math.abs(h);
+}
+function pick(arr, seed) { return arr[seed % arr.length]; }
+
+function generateReport(address, submissions) {
+const h = hashStr(address.toLowerCase());
+const city = address.split(”,”)[1]?.trim() || “the area”;
+const state = address.split(”,”)[2]?.trim()?.slice(0,2).toUpperCase() || “US”;
+
+const yearBuilt = 1945 + (h % 60);
+const sqft = 900 + (h % 2200);
+const beds = 2 + (h % 4);
+const baths = 1 + (h % 3);
+const basePrice = 120000 + (h % 380000);
+const score = 48 + (h % 50);
+const scoreLabel = score >= 80 ? “Excellent” : score >= 65 ? “Good” : score >= 50 ? “Fair” : “Concerning”;
+
+// Sales
+const numSales = 2 + (h % 4);
+const currentYear = 2024;
+const firstSaleYear = currentYear - 6 - (h % 25);
+const salesArr = [];
+let price = basePrice;
+for (let i = 0; i < numSales; i++) {
+const yr = firstSaleYear + Math.floor(i * ((currentYear - firstSaleYear) / numSales));
+salesArr.push({ year: yr, price });
+price = Math.round(price * (1.02 + (hashStr(address + i) % 12) / 100));
+}
+const salesStatus = score > 65 ? “RISING” : score > 50 ? “STABLE” : “DECLINING”;
+const salesText = salesArr.map(s => `• ${s.year}: Sold for $${s.price.toLocaleString()}`).join(”\n”)
++ `\n\nTrend: Values have ${score > 65 ? "appreciated steadily" : "remained flat"} over the past ${currentYear - salesArr[0].year} years.`;
+
+// Permits
+const permitTypes = [
+`${yearBuilt + 15 + (h % 10)}: Roof replacement — permit #${10000 + (h % 89999)}, completed by ${pick(["Miller Roofing","Apex Contractors","SunRoof Co."], h)} LLC.`,
+`${yearBuilt + 25 + (h % 15)}: Kitchen remodel — permit #${20000 + (h % 79999)}, owner-contracted.`,
+`${yearBuilt + 30 + (h % 8)}: HVAC replacement — permit #${30000 + (h % 69999)}, completed by ${pick(["CoolAir Services","ProClimate HVAC","TempRight Inc."], h+1)}.`,
+`${2015 + (h % 8)}: Electrical panel upgrade — permit #${50000 + (h % 49999)}, completed by ${pick(["Volt Electric","PowerSafe Inc.","GridPro"], h+3)}.`,
+];
+const permitsText = permitTypes.slice(0, 2 + (h % 3)).join(”\n”);
+
+// Damage
+const hasDamage = (h % 3) !== 0;
+const damageStatus = !hasDamage ? “CLEAN RECORD” : “MINOR ISSUES”;
+const damageText = !hasDamage
+? “No recorded damage incidents found in public records.”
+: `• ${2005 + (h % 15)}: Minor water intrusion reported. Remediated by ${pick(["DryShield Co.","WaterGuard LLC","AquaSeal"], h)}.\n• ${2010 + (h % 10)}: Storm damage to roof — insurance claim filed. Repairs completed.`;
+
+// Risks
+const riskScore = h % 10;
+const riskStatus = riskScore < 4 ? “LOW RISK” : riskScore < 7 ? “MODERATE RISK” : “HIGH RISK”;
+const risksText = `Flood: ${pick(["Zone X (minimal flood risk)","Zone AE (moderate — insurance recommended)","Zone X500 (low risk)"], h)}\nWildfire: ${pick(["No wildfire risk.","Low wildfire risk.","Moderate risk — check local fire authority."], h+1)}\nRadon: ${(h%2)===0 ? "Low radon potential." : "Moderate radon potential — recommend test."}\nEnvironmental: No Superfund sites within 1 mile.`;
+
+// Neighborhood
+const neighborhoodText = `${pick(["Very Walkable (Walk Score 82)","Car-Dependent (Walk Score 34)","Somewhat Walkable (Walk Score 61)"], h)} · ${pick(["Low crime — 23% below city average.","Average crime rate.","Slightly elevated crime."], h+3)}\n\n${pick(["Parks, grocery stores, and restaurants within 0.5 miles.","Shopping center and medical facilities within 1 mile.","Public transit and community parks nearby."], h+4)}`;
+
+// Overview
+const overview = `${yearBuilt}-built ${pick(["single-family home","craftsman bungalow","ranch-style home","colonial-style residence"], h)}, ${sqft.toLocaleString()} sq ft, ${beds} bed / ${baths} bath. Last assessed: $${Math.round(price * 0.92).toLocaleString()}. Lot size ~${3000 + (h % 8000)} sq ft. ${pick(["Detached 1-car garage.","Attached 2-car garage.","No garage — off-street parking."], h+1)}`;
+
+// ── SCHOOLS ──────────────────────────────────────────────────────────────
+const districtNames = [
+`${city} Unified School District`,
+`${city} Independent School District`,
+`${state} Central School District`,
+`${city} Public Schools`,
+`Greater ${city} School District`,
+];
+const districtName = pick(districtNames, h);
+const districtRating = 4 + (h % 7); // 4–10
+const districtGrade = districtRating >= 9 ? “A+” : districtRating >= 8 ? “A” : districtRating >= 7 ? “B+” : districtRating >= 6 ? “B” : districtRating >= 5 ? “C+” : “C”;
+
+const elementaryNames = [“Lincoln Elementary”,“Riverside Elementary”,“Oak Park Elementary”,“Sunridge Elementary”,“Maple Grove Elementary”,“Jefferson Elementary”,“Horizon Elementary”];
+const middleNames = [“Roosevelt Middle School”,“Westview Middle”,“Cedar Ridge Middle”,“Valley Middle School”,“Parkside Middle”,“Heritage Middle School”];
+const highNames = [“Central High School”,“Liberty High School”,“Westside High”,“Northview High School”,“Summit High School”,“Riverside High School”];
+
+const elementary = pick(elementaryNames, h);
+const elemRating = 4 + (h % 7);
+const elemGrade = elemRating >= 9 ? “A+” : elemRating >= 8 ? “A” : elemRating >= 7 ? “B+” : elemRating >= 6 ? “B” : elemRating >= 5 ? “C+” : “C”;
+const elemDist = (0.3 + (h % 18) / 10).toFixed(1);
+
+const middle = pick(middleNames, h+1);
+const midRating = 4 + ((h+3) % 7);
+const midGrade = midRating >= 9 ? “A+” : midRating >= 8 ? “A” : midRating >= 7 ? “B+” : midRating >= 6 ? “B” : midRating >= 5 ? “C+” : “C”;
+const midDist = (0.5 + ((h+1) % 22) / 10).toFixed(1);
+
+const high = pick(highNames, h+2);
+const highRating = 4 + ((h+5) % 7);
+const highGrade = highRating >= 9 ? “A+” : highRating >= 8 ? “A” : highRating >= 7 ? “B+” : highRating >= 6 ? “B” : highRating >= 5 ? “C+” : “C”;
+const highDist = (0.8 + ((h+2) % 30) / 10).toFixed(1);
+
+const programs = pick([
+“Magnet program available at elementary level. Dual-language program at middle school.”,
+“STEM-focused curriculum at high school. Advanced Placement (AP) courses offered.”,
+“International Baccalaureate (IB) program at high school. Gifted & talented program available.”,
+“Charter school options available within district boundaries.”,
+“Special education services and inclusion programs district-wide.”,
+], h+6);
+
+const schoolsText =
+`📋 District: ${districtName}
+District Rating: ${districtGrade} (${districtRating}/10) · GreatSchools
+
+─────────────────────────────
+🏫 Elementary School
+${elementary}
+Rating: ${elemGrade} (${elemRating}/10) · ${elemDist} miles from property
+Grades: K–5
+
+🏫 Middle School
+${middle}
+Rating: ${midGrade} (${midRating}/10) · ${midDist} miles from property
+Grades: 6–8
+
+🏫 High School
+${high}
+Rating: ${highGrade} (${highRating}/10) · ${highDist} miles from property
+Grades: 9–12
+
+─────────────────────────────
+Special Programs:
+${programs}
+
+⚠️ Always verify current school assignments at your district’s official website — boundaries change.`;
+
+const schoolStatus = districtRating >= 8 ? “TOP RATED” : districtRating >= 6 ? “ABOVE AVG” : districtRating >= 5 ? “AVERAGE” : “BELOW AVG”;
+
+// Community
+const addrKey = address.trim().toLowerCase();
+const addrSubmissions = (submissions[addrKey] || []);
+const communityText = addrSubmissions.length === 0
+? “No community submissions yet for this property.\n\nKnow something about this home? Tap the ‘Submit Info’ tab to share what you know and help future buyers.”
+: addrSubmissions.map((s, i) => `Submission #${i+1} · ${s.role} · ${s.date}\n${s.summary}`).join(”\n\n─────────────────\n\n”);
+
+// Verdict
+const verdict = `This ${yearBuilt}-built property ${score > 65 ? "shows solid appreciation and is a reasonable buy" : "requires careful due diligence before purchasing"} in this market. The assigned schools are ${districtGrade}-rated — ${districtRating >= 7 ? "a strong positive for families" : "worth researching further if schools are a priority"}. ${hasDamage ? "Prior damage was recorded — confirm all repairs were properly completed." : "No damage flags found, a positive sign."} Prioritize inspecting the HVAC and roof given the age of construction.${addrSubmissions.length > 0 ? ` ⭐ This property has ${addrSubmissions.length} community submission(s) — review them carefully.` : ""}`;
+
+return { score, scoreLabel, overview, schools: schoolsText, schoolStatus, sales: salesText, permits: permitsText, damage: damageText, risks: risksText, neighborhood: neighborhoodText, community: communityText, verdict, salesStatus, damageStatus, riskStatus };
+}
+
+function statusStyle(key, report) {
+if (key === “schools”) {
+const s = report.schoolStatus;
+return s === “TOP RATED” ? { bg: “#E8F2E8”, color: “#2E7D32”, label: s }
+: s === “ABOVE AVG” ? { bg: “#E8F5E9”, color: “#388E3C”, label: s }
+: s === “AVERAGE” ? { bg: “#FFF3E0”, color: “#E65100”, label: s }
+: { bg: “#FDE8E8”, color: “#B91C1C”, label: s };
+}
+if (key === “sales”) return report.salesStatus === “DECLINING”
+? { bg: “#FFF3E0”, color: “#E65100”, label: report.salesStatus }
+: { bg: “#E8F2E8”, color: “#2E7D32”, label: report.salesStatus };
+if (key === “damage”) return report.damageStatus === “CLEAN RECORD”
+? { bg: “#E8F2E8”, color: “#2E7D32”, label: report.damageStatus }
+: { bg: “#FFF3E0”, color: “#E65100”, label: report.damageStatus };
+if (key === “risks”) return report.riskStatus === “LOW RISK”
+? { bg: “#E8F2E8”, color: “#2E7D32”, label: report.riskStatus }
+: report.riskStatus === “HIGH RISK”
+? { bg: “#FDE8E8”, color: “#B91C1C”, label: report.riskStatus }
+: { bg: “#FFF3E0”, color: “#E65100”, label: report.riskStatus };
+if (key === “community”) return { bg: “#FFF8E1”, color: “#F57F17”, label: “COMMUNITY” };
+return { bg: “#EEF2FF”, color: “#3730A3”, label: key === “verdict” ? “AI ANALYSIS” : “ON FILE” };
+}
+
+function scoreColor(s) { return s >= 80 ? “#4A6741” : s >= 60 ? “#C9A84C” : “#B91C1C”; }
+
+const SAMPLES = [
+“123 Oak Street, Austin, TX 78701”,
+“456 Maple Ave, Miami, FL 33101”,
+“789 Elm Blvd, New Orleans, LA 70112”,
+];
+
+const CATEGORIES = [
+{ key: “damage”, label: “🔥 Damage & Repairs”, fields: [“Roof issues”,“Flooding / water damage”,“Mold or mildew”,“Foundation cracks”,“Fire damage”,“Structural problems”] },
+{ key: “neighbors”, label: “🏘️ Neighbor & Noise Issues”, fields: [“Loud neighbors”,“Parking disputes”,“Property boundary issues”,“HOA problems”,“Neighborhood disputes”] },
+{ key: “renovations”, label: “🔨 Renovations & Upgrades”, fields: [“Kitchen remodel”,“Bathroom remodel”,“Addition built”,“Pool added”,“Solar panels installed”,“New HVAC”,“New roof”,“New windows”] },
+{ key: “pests”, label: “🐛 Pests & Infestations”, fields: [“Termites”,“Rodents”,“Cockroaches”,“Bed bugs”,“Ants”,“Other pests”] },
+{ key: “utilities”, label: “💧 Utilities & Systems”, fields: [“Plumbing issues”,“Electrical problems”,“HVAC problems”,“Low water pressure”,“Sewer backup”,“High utility bills”] },
+];
+
+export default function HomeTrace() {
+const [tab, setTab] = useState(“Search”);
+const [address, setAddress] = useState(””);
+const [report, setReport] = useState(null);
+const [submissions, setSubmissions] = useState({});
+const [subAddress, setSubAddress] = useState(””);
+const [subRole, setSubRole] = useState(””);
+const [subCategory, setSubCategory] = useState(””);
+const [subFields, setSubFields] = useState([]);
+const [subDetails, setSubDetails] = useState(””);
+const [subYear, setSubYear] = useState(””);
+const [submitted, setSubmitted] = useState(false);
+
+function runReport(addr) {
+const a = addr || address;
+if (!a.trim()) return;
+setAddress(a);
+setReport(generateReport(a, submissions));
+}
+
+function toggleField(f) {
+setSubFields(prev => prev.includes(f) ? prev.filter(x => x !== f) : […prev, f]);
+}
+
+function handleSubmit() {
+if (!subAddress.trim() || !subRole || !subCategory || subFields.length === 0) return;
+const key = subAddress.trim().toLowerCase();
+const cat = CATEGORIES.find(c => c.key === subCategory);
+const summary = `Category: ${cat?.label}\nIssues: ${subFields.join(", ")}${subYear ? `\nYear: ${subYear}`: ""}${subDetails ?`\nDetails: ${subDetails}` : ""}`;
+const entry = { role: subRole, date: new Date().toLocaleDateString(“en-US”, { month: “short”, year: “numeric” }), summary };
+const updated = { …submissions, [key]: […(submissions[key] || []), entry] };
+setSubmissions(updated);
+if (address && address.trim().toLowerCase() === key) setReport(generateReport(address, updated));
+setSubmitted(true);
+setSubAddress(””); setSubRole(””); setSubCategory(””); setSubFields([]); setSubDetails(””); setSubYear(””);
+}
+
+const canSubmit = subAddress.trim() && subRole && subCategory && subFields.length > 0;
+
+return (
+<div style={{ fontFamily: “Georgia, serif”, background: “#F5F0E8”, minHeight: “100vh”, color: “#1A1410” }}>
+
+```
+{/* Header */}
+<div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #DDD5C8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "white" }}>
+<div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem" }}>
+<div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Home<span style={{ color: "#C4622D" }}>Trace</span></div>
+<div style={{ fontSize: "0.7rem", color: "#8A7F74", textTransform: "uppercase", letterSpacing: "0.1em" }}>House History</div>
+</div>
+<div style={{ display: "flex", background: "#F5F0E8", borderRadius: 20, padding: "3px", border: "1px solid #DDD5C8" }}>
+{TABS.map(t => (
+<button key={t} onClick={() => { setTab(t); setSubmitted(false); }}
+style={{ background: tab === t ? "#C4622D" : "transparent", color: tab === t ? "white" : "#8A7F74", border: "none", borderRadius: 16, padding: "0.35rem 0.9rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+{t}
+</button>
+))}
+</div>
+</div>
+
+{/* SEARCH TAB */}
+{tab === "Search" && (
+<div>
+<div style={{ maxWidth: 700, margin: "0 auto", padding: "2.5rem 1.5rem 1.5rem", textAlign: "center" }}>
+<h1 style={{ fontSize: "2.2rem", lineHeight: 1.2, marginBottom: "0.6rem" }}>
+Know the <em style={{ color: "#C4622D" }}>full story</em> before you buy
+</h1>
+<p style={{ color: "#8A7F74", fontSize: "0.95rem", lineHeight: 1.7, maxWidth: 460, margin: "0 auto 1.5rem" }}>
+Like Carfax for homes — plus school info and real reports from owners and renters.
+</p>
+<div style={{ background: "white", border: "1.5px solid #DDD5C8", borderRadius: 12, padding: "1.25rem", boxShadow: "0 4px 20px rgba(0,0,0,0.07)", maxWidth: 560, margin: "0 auto" }}>
+<div style={{ fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#8A7F74", fontWeight: 600, marginBottom: "0.5rem", textAlign: "left" }}>Property address</div>
+<div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+<input value={address} onChange={e => setAddress(e.target.value)} onKeyDown={e => e.key === "Enter" && runReport()}
+placeholder="e.g. 742 Evergreen Terrace, Springfield, IL"
+style={{ flex: 1, minWidth: 180, border: "1.5px solid #DDD5C8", borderRadius: 8, padding: "0.7rem 0.9rem", fontSize: "0.9rem", fontFamily: "sans-serif", outline: "none", background: "#F5F0E8" }} />
+<button onClick={() => runReport()} disabled={!address.trim()}
+style={{ background: !address.trim() ? "#8A7F74" : "#C4622D", color: "white", border: "none", borderRadius: 8, padding: "0.7rem 1.1rem", fontFamily: "sans-serif", fontWeight: 600, fontSize: "0.88rem", cursor: !address.trim() ? "not-allowed" : "pointer" }}>
+Run Report
+</button>
+</div>
+<div style={{ marginTop: "0.65rem", textAlign: "left" }}>
+<span style={{ fontSize: "0.7rem", color: "#8A7F74" }}>Try: </span>
+{SAMPLES.map(s => (
+<button key={s} onClick={() => runReport(s)}
+style={{ background: "#F5F0E8", border: "1px solid #DDD5C8", borderRadius: 20, padding: "0.18rem 0.6rem", fontSize: "0.7rem", color: "#C4622D", cursor: "pointer", margin: "0.12rem", fontWeight: 500 }}>
+{s.split(",")[0]}
+</button>
+))}
+</div>
+</div>
+</div>
+
+{report && (
+<div style={{ maxWidth: 700, margin: "0 auto 4rem", padding: "0 1.5rem" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem", paddingBottom: "1.25rem", borderBottom: "1px solid #DDD5C8", flexWrap: "wrap", gap: "1rem" }}>
+<div>
+<div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{address}</div>
+<div style={{ fontSize: "0.7rem", color: "#8A7F74", marginTop: "0.2rem", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "sans-serif" }}>
+HomeTrace Report · {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+</div>
+</div>
+<div style={{ background: scoreColor(report.score), color: "white", borderRadius: 10, padding: "0.5rem 1rem", textAlign: "center", minWidth: 75 }}>
+<div style={{ fontSize: "1.8rem", lineHeight: 1, fontWeight: "bold" }}>{report.score}</div>
+<div style={{ fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.9, fontFamily: "sans-serif" }}>{report.scoreLabel}</div>
+</div>
+</div>
+
+<div style={{ display: "grid", gap: "0.8rem" }}>
+{SECTIONS.map(sec => {
+const st = statusStyle(sec.key, report);
+return (
+<div key={sec.key} style={{ background: "#FDFAF5", border: sec.key === "community" ? "1.5px solid #F0C878" : sec.key === "schools" ? "1.5px solid #A5D6A7" : "1px solid #DDD5C8", borderRadius: 12, overflow: "hidden" }}>
+<div style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.85rem 1rem", borderBottom: "1px solid #DDD5C8", background: sec.key === "community" ? "#FFFBF0" : sec.key === "schools" ? "#F1F8F1" : "white" }}>
+<span style={{ fontSize: "1rem" }}>{sec.icon}</span>
+<span style={{ fontWeight: 600, fontSize: "0.85rem", fontFamily: "sans-serif" }}>{sec.title}</span>
+<span style={{ marginLeft: "auto", background: st.bg, color: st.color, fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", padding: "0.18rem 0.5rem", borderRadius: 20, fontFamily: "sans-serif" }}>
+{st.label}
+</span>
+</div>
+<div style={{ padding: "0.9rem 1rem", fontSize: "0.85rem", lineHeight: 1.75, color: "#3A3026", fontFamily: "sans-serif", whiteSpace: "pre-wrap" }}>
+{report[sec.key]}
+</div>
+{sec.key === "community" && (
+<div style={{ padding: "0 1rem 0.9rem" }}>
+<button onClick={() => { setTab("Submit Info"); setSubAddress(address); setSubmitted(false); }}
+style={{ background: "#C4622D", color: "white", border: "none", borderRadius: 8, padding: "0.5rem 1rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
++ Submit info about this property
+</button>
+</div>
+)}
+</div>
+);
+})}
+</div>
+
+<div style={{ marginTop: "1.25rem", padding: "0.9rem 1rem", background: "#FFF8F0", border: "1px solid #F0DEC4", borderRadius: 8, fontSize: "0.74rem", color: "#8A7F74", lineHeight: 1.6, fontFamily: "sans-serif" }}>
+<strong style={{ color: "#C4622D" }}>Demo Prototype:</strong> All data is algorithmically generated for illustration. School boundaries and ratings change — always verify with your district. Get a certified inspection before purchasing.
+</div>
+</div>
+)}
+</div>
+)}
+
+{/* SUBMIT TAB */}
+{tab === "Submit Info" && (
+<div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem 1.5rem 4rem" }}>
+<h2 style={{ fontSize: "1.6rem", marginBottom: "0.4rem" }}>Submit Property Info</h2>
+<p style={{ color: "#8A7F74", fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "1.5rem", fontFamily: "sans-serif" }}>
+Help future buyers know the truth. Share what you know about a property you've lived in, owned, or know about.
+</p>
+
+{submitted && (
+<div style={{ background: "#E8F5E9", border: "1px solid #A5D6A7", borderRadius: 10, padding: "1rem 1.25rem", marginBottom: "1.5rem", fontFamily: "sans-serif", fontSize: "0.9rem", color: "#2E7D32" }}>
+✅ <strong>Thank you!</strong> Your submission has been added and will appear in the Community Submissions section for this property.
+</div>
+)}
+
+<div style={{ display: "grid", gap: "1rem" }}>
+<div>
+<label style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8A7F74", fontWeight: 600, fontFamily: "sans-serif", display: "block", marginBottom: "0.4rem" }}>Property Address *</label>
+<input value={subAddress} onChange={e => setSubAddress(e.target.value)} placeholder="123 Main St, City, State ZIP"
+style={{ width: "100%", border: "1.5px solid #DDD5C8", borderRadius: 8, padding: "0.7rem 0.9rem", fontSize: "0.9rem", fontFamily: "sans-serif", outline: "none", background: "white", boxSizing: "border-box" }} />
+</div>
+
+<div>
+<label style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8A7F74", fontWeight: 600, fontFamily: "sans-serif", display: "block", marginBottom: "0.4rem" }}>Your Role *</label>
+<div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+{["Previous Owner","Current Owner","Previous Renter","Current Renter","Neighbor","Real Estate Agent"].map(r => (
+<button key={r} onClick={() => setSubRole(r)}
+style={{ background: subRole === r ? "#C4622D" : "white", color: subRole === r ? "white" : "#3A3026", border: `1.5px solid ${subRole === r ? "#C4622D" : "#DDD5C8"}`, borderRadius: 20, padding: "0.35rem 0.85rem", fontSize: "0.8rem", cursor: "pointer", fontFamily: "sans-serif", fontWeight: 500 }}>
+{r}
+</button>
+))}
+</div>
+</div>
+
+<div>
+<label style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8A7F74", fontWeight: 600, fontFamily: "sans-serif", display: "block", marginBottom: "0.4rem" }}>Category *</label>
+<div style={{ display: "grid", gap: "0.4rem" }}>
+{CATEGORIES.map(c => (
+<button key={c.key} onClick={() => { setSubCategory(c.key); setSubFields([]); }}
+style={{ background: subCategory === c.key ? "#FFF3EE" : "white", color: "#1A1410", border: `1.5px solid ${subCategory === c.key ? "#C4622D" : "#DDD5C8"}`, borderRadius: 8, padding: "0.6rem 1rem", fontSize: "0.85rem", cursor: "pointer", fontFamily: "sans-serif", textAlign: "left", fontWeight: subCategory === c.key ? 600 : 400 }}>
+{c.label}
+</button>
+))}
+</div>
+</div>
+
+{subCategory && (
+<div>
+<label style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8A7F74", fontWeight: 600, fontFamily: "sans-serif", display: "block", marginBottom: "0.4rem" }}>Specific Issues * (select all that apply)</label>
+<div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+{CATEGORIES.find(c => c.key === subCategory)?.fields.map(f => (
+<button key={f} onClick={() => toggleField(f)}
+style={{ background: subFields.includes(f) ? "#C4622D" : "white", color: subFields.includes(f) ? "white" : "#3A3026", border: `1.5px solid ${subFields.includes(f) ? "#C4622D" : "#DDD5C8"}`, borderRadius: 20, padding: "0.3rem 0.75rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "sans-serif" }}>
+{f}
+</button>
+))}
+</div>
+</div>
+)}
+
+<div>
+<label style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8A7F74", fontWeight: 600, fontFamily: "sans-serif", display: "block", marginBottom: "0.4rem" }}>Approximate Year (optional)</label>
+<input value={subYear} onChange={e => setSubYear(e.target.value)} placeholder="e.g. 2019"
+style={{ width: "100%", border: "1.5px solid #DDD5C8", borderRadius: 8, padding: "0.7rem 0.9rem", fontSize: "0.9rem", fontFamily: "sans-serif", outline: "none", background: "white", boxSizing: "border-box" }} />
+</div>
+
+<div>
+<label style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#8A7F74", fontWeight: 600, fontFamily: "sans-serif", display: "block", marginBottom: "0.4rem" }}>Additional Details (optional)</label>
+<textarea value={subDetails} onChange={e => setSubDetails(e.target.value)}
+placeholder="Any extra context that would help future buyers or renters..." rows={3}
+style={{ width: "100%", border: "1.5px solid #DDD5C8", borderRadius: 8, padding: "0.7rem 0.9rem", fontSize: "0.9rem", fontFamily: "sans-serif", outline: "none", background: "white", resize: "vertical", boxSizing: "border-box" }} />
+</div>
+
+<button onClick={handleSubmit} disabled={!canSubmit}
+style={{ background: canSubmit ? "#C4622D" : "#8A7F74", color: "white", border: "none", borderRadius: 10, padding: "0.9rem", fontSize: "1rem", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed", fontFamily: "sans-serif" }}>
+Submit Property Info
+</button>
+
+<p style={{ fontSize: "0.74rem", color: "#8A7F74", textAlign: "center", fontFamily: "sans-serif", lineHeight: 1.5 }}>
+Submissions are anonymous. By submitting you confirm this information is accurate to the best of your knowledge.
+</p>
+</div>
+</div>
+)}
+</div>
+```
+
+);
+}
