@@ -168,8 +168,8 @@ function App() {
     try {
       // Fetch real property data and sales in parallel
       const [propRes, salesRes] = await Promise.all([
-        fetch(`/.netlify/functions/property?address=${encodeURIComponent(a)}`),
-        fetch(`/.netlify/functions/sales?address=${encodeURIComponent(a)}`)
+        fetch(`/api/property?address=${encodeURIComponent(a)}`),
+        fetch(`/api/sales?address=${encodeURIComponent(a)}`)
       ]);
 
       const propData = await propRes.json();
