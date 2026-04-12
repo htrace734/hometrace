@@ -1,4 +1,6 @@
-export default async function handler(req, res) {
+const fetch = require('node-fetch');
+
+module.exports = async function handler(req, res) {
   const { address } = req.query;
   if (!address) return res.status(400).json({ error: "Address required" });
   const parts = address.split(",");
@@ -15,7 +17,3 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
-
-Commit
-
-Then check the URL before committing — make sure it says github.com/htrace734/hometrace/new/main with NO src in it! 🚀
