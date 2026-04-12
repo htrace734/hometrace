@@ -191,7 +191,7 @@ function App() {
       if (events.length === 0 && saleProp?.sale?.amount?.saleamt) {
         events.push({ 
           eventType: "sale", 
-          eventDate: saleProp.sale.salesTransDate || "2010-01-01", 
+          eventDate: saleProp.sale.saleTransDate || saleProp.sale.salesTransDate || saleProp.sale.salesearchdate || "2010-01-01", 
           amount: { saleamt: saleProp.sale.amount.saleamt } 
         });
       }
@@ -429,4 +429,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
-
