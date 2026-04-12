@@ -176,7 +176,12 @@ function App() {
       const salesData = await salesRes.json();
 
       const prop = propData?.property?.[0];
-      const events = salesData?.property?.[0]?.eventhistory || [];
+      const saleProp = salesData?.property?.[0];
+      const saleAmt = saleProp?.sale?.amount?.saleamt;
+      const saleDate = saleProp?.sale?.salesTransDate;
+      const avm = saleProp?.avm?.amount?.value;
+      const events = saleAmt ? [{ eventType: "sale", eventDate: saleDate || "2010-01-01", amount: { saleamt: saleAmt } }] : [];
+      const avmText = avm ? `\nEstimated current value (AVM): $${Number(avm).toLocaleString()}` : "";
 
       const overviewText = formatPropertyFromATTOM(prop) || `Property details not found in public records for this address.`;
       const { text: salesText, status: salesStatus } = formatSalesFromATTOM(events);
@@ -408,3 +413,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
+
+ 
