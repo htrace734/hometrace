@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const { address } = req.query;
   if (!address) return res.status(400).json({ error: "Address required" });
   const parts = address.split(",");
@@ -10,8 +10,8 @@ module.exports = async function handler(req, res) {
       { headers: { "apikey": process.env.ATTOM_API_KEY, "Accept": "application/json" } }
     );
     const data = await response.json();
-    res.status(200).json(data);
+    return res.status(200).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
