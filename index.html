@@ -85,10 +85,13 @@ function generateFallback(address, submissions) {
 function formatSalesFromATTOM(events) {
   if (!events || events.length === 0) return { text: "No sales history found in public records.", status: "STABLE" };
   const sales = events
-    .filter(e => e.eventType && e.eventType.toLowerCase().includes("sale") && e.amount && e.amount.saleamt > 0)
+    .filter(e => e.amount && e.amount.saleamt > 0)
     .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
   if (sales.length === 0) return { text: "No recorded sales transactions found.", status: "STABLE" };
-  const lines = sales.map(s => `• ${new Date(s.eventDate).getFullYear()}: Sold for $${Number(s.amount.saleamt).toLocaleString()}`);
+  const lines = sales.map(s => {
+    const yr = s.eventDate ? new Date(s.eventDate).getFullYear() : "Unknown year";
+    return `• ${yr}: Sold for $${Number(s.amount.saleamt).toLocaleString()}`;
+  });
   const first = sales[0].amount.saleamt;
   const last = sales[sales.length-1].amount.saleamt;
   const trend = last > first * 1.1 ? "appreciated steadily" : last < first * 0.9 ? "declined" : "remained stable";
@@ -180,8 +183,8 @@ function App() {
       const saleAmt = saleProp?.sale?.amount?.saleamt;
       const saleDate = saleProp?.sale?.salesTransDate;
       const avm = saleProp?.avm?.amount?.value;
-      const events = saleAmt ? [{ eventType: "sale", eventDate: saleDate || "2010-01-01", amount: { saleamt: saleAmt } }] : [];
       const avmText = avm ? `\nEstimated current value (AVM): $${Number(avm).toLocaleString()}` : "";
+      const events = saleAmt ? [{ eventType: "sale", eventDate: saleDate || "2010-01-01", amount: { saleamt: saleAmt } }] : [];
 
       const overviewText = formatPropertyFromATTOM(prop) || `Property details not found in public records for this address.`;
       const { text: salesText, status: salesStatus } = formatSalesFromATTOM(events);
@@ -413,5 +416,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
-
- 
