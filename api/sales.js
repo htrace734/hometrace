@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+odule.exports = async function handler(req, res) {
   const { address } = req.query;
   if (!address) return res.status(400).json({ error: "Address required" });
   const parts = address.split(",");
@@ -6,7 +6,7 @@ module.exports = async function handler(req, res) {
   const address2 = parts.slice(1).join(",").trim();
   try {
     const response = await fetch(
-      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`,
+      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/allevents/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`,
       { headers: { "apikey": process.env.ATTOM_API_KEY, "Accept": "application/json" } }
     );
     const data = await response.json();
