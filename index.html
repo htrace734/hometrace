@@ -90,10 +90,11 @@ function formatSalesFromATTOM(events) {
   if (sales.length === 0) return { text: "No recorded sales transactions found.", status: "STABLE" };
   const lines = sales.map(s => {
     const yr = s.eventDate ? new Date(s.eventDate).getFullYear() : "Unknown year";
-    return `• ${yr}: Sold for $${Number(s.amount.saleamt).toLocaleString()}`;
+    const amt = s.amount.saleamt || s.amount.saleAmt;
+    return `• ${yr}: Sold for $${Number(amt).toLocaleString()}`;
   });
-  const first = sales[0].amount.saleamt;
-  const last = sales[sales.length-1].amount.saleamt;
+  const first = sales[0].amount.saleamt || sales[0].amount.saleAmt;
+  const last = sales[sales.length-1].amount.saleamt || sales[sales.length-1].amount.saleAmt;
   const trend = last > first * 1.1 ? "appreciated steadily" : last < first * 0.9 ? "declined" : "remained stable";
   const status = last > first * 1.1 ? "RISING" : last < first * 0.9 ? "DECLINING" : "STABLE";
   lines.push(`\nTrend: Values have ${trend} over this period.`);
@@ -179,15 +180,20 @@ function App() {
       const salesData = await salesRes.json();
 
       const prop = propData?.property?.[0];
+      // allevents/detail returns eventhistory array with sales, assessments, AVM
       const saleProp = salesData?.property?.[0];
-      const saleAmt = saleProp?.sale?.amount?.saleamt;
-      const saleDate = saleProp?.sale?.salesTransDate;
+      const eventHistory = saleProp?.eventhistory || [];
       const avm = saleProp?.avm?.amount?.value;
-      const avmText = avm ? `\nEstimated current value (AVM): $${Number(avm).toLocaleString()}` : "";
-      // Build events from sale data or AVM
-      const events = [];
-      if (saleAmt && saleAmt > 0) {
-        events.push({ eventType: "sale", eventDate: saleDate || "2010-01-01", amount: { saleamt: saleAmt } });
+      const avmText = avm ? `\nEstimated current market value (AVM): $${Number(avm).toLocaleString()}` : "";
+      // Get all events that have a sale amount
+      const events = eventHistory.filter(e => e.amount && (e.amount.saleamt || e.amount.saleAmt) && (e.amount.saleamt || e.amount.saleAmt) > 0);
+      // If no typed events but we have raw sale data, use it
+      if (events.length === 0 && saleProp?.sale?.amount?.saleamt) {
+        events.push({ 
+          eventType: "sale", 
+          eventDate: saleProp.sale.salesTransDate || "2010-01-01", 
+          amount: { saleamt: saleProp.sale.amount.saleamt } 
+        });
       }
       // Add AVM as estimated current value
       const avmLine = avm ? `\nEstimated current market value: $${Number(avm).toLocaleString()} (Automated Valuation)` : "";
@@ -423,3 +429,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
+
