@@ -5,6 +5,11 @@ export default async function handler(req, res) {
 
   const { priceId, address } = req.body;
 
+  // Determine mode based on price ID
+  const isSubscription = priceId === 'price_1TUCdyJPPKhF2pqbxndN225A' || 
+                         priceId === 'price_1TUCs1JPPKhF2pqb4lbfv5lz';
+  const mode = isSubscription ? 'subscription' : 'payment';
+
   try {
     const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -16,7 +21,7 @@ export default async function handler(req, res) {
         'payment_method_types[]': 'card',
         'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
-        'mode': priceId.includes('single') ? 'payment' : 'subscription',
+        'mode': mode,
         'success_url': `https://hometrace-theta.vercel.app/?paid=true&address=${encodeURIComponent(address)}`,
         'cancel_url': `https://hometrace-theta.vercel.app`,
       }),
@@ -29,5 +34,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
-
 
