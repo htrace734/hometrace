@@ -141,10 +141,28 @@ const CATEGORIES = [
   {key:"utilities",label:"💧 Utilities & Systems",fields:["Plumbing issues","Electrical problems","HVAC problems","Low water pressure","Sewer backup","High utility bills"]},
 ];
 
+const PRICES = {
+  single: "price_1TUCb0JPPKhF2pqbzlTm0uQR",
+  monthly: "price_1TUCs1JPPKhF2pqbxndN225A",
+  annual: "price_1TUCs1JPPKhF2pqb4lbfv5lz"
+};
+
 function App() {
+  // Check if returning from successful Stripe payment
+  const urlParams = new URLSearchParams(window.location.search);
+  const returnedPaid = urlParams.get('paid') === 'true' && urlParams.get('address');
+  const returnedAddress = urlParams.get('address') || '';
   const [tab, setTab] = React.useState("Search");
-  const [address, setAddress] = React.useState("");
+  const [address, setAddress] = React.useState(returnedAddress);
   const [loading, setLoading] = React.useState(false);
+  const [paid, setPaid] = React.useState(returnedPaid);
+  const [checkingOut, setCheckingOut] = React.useState(false);
+  // Auto-run report if returning from successful payment
+  React.useEffect(() => {
+    if (returnedPaid && returnedAddress) {
+      runReport(returnedAddress);
+    }
+  }, []);
   const [report, setReport] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [submissions, setSubmissions] = React.useState({});
@@ -244,6 +262,23 @@ function App() {
     setSubAddress("");setSubRole("");setSubCategory("");setSubFields([]);setSubDetails("");setSubYear("");
   }
 
+  async function handleCheckout(priceId) {
+    setCheckingOut(true);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId, address })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert('Payment error: ' + (data.error || 'Unknown error'));
+    } catch(e) {
+      alert('Payment error: ' + e.message);
+    }
+    setCheckingOut(false);
+  }
+
   const canSubmit = subAddress.trim()&&subRole&&subCategory&&subFields.length>0;
 
   return (
@@ -321,8 +356,35 @@ function App() {
                 </div>
               </div>
 
+              {!paid && (
+                <div style={{background:"white",border:"2px solid #C4622D",borderRadius:12,padding:"1.5rem",marginBottom:"1rem",textAlign:"center"}}>
+                  <div style={{fontSize:"1.1rem",fontWeight:"bold",marginBottom:"0.5rem"}}>🔒 Unlock Full Report</div>
+                  <p style={{color:"#8A7F74",fontSize:"0.85rem",fontFamily:"sans-serif",marginBottom:"1.25rem",lineHeight:1.5}}>
+                    You are viewing a preview. Unlock the full report including damage records, permits, risk factors, schools and more.
+                  </p>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:"0.75rem",justifyContent:"center",marginBottom:"0.75rem"}}>
+                    <button onClick={()=>handleCheckout(PRICES.single)} disabled={checkingOut}
+                      style={{background:"#C4622D",color:"white",border:"none",borderRadius:8,padding:"0.7rem 1.25rem",fontFamily:"sans-serif",fontWeight:700,fontSize:"0.9rem",cursor:"pointer"}}>
+                      {checkingOut ? "Loading..." : "Single Report $9.99"}
+                    </button>
+                    <button onClick={()=>handleCheckout(PRICES.monthly)} disabled={checkingOut}
+                      style={{background:"#4A6741",color:"white",border:"none",borderRadius:8,padding:"0.7rem 1.25rem",fontFamily:"sans-serif",fontWeight:700,fontSize:"0.9rem",cursor:"pointer"}}>
+                      {checkingOut ? "Loading..." : "Monthly $19.99/mo"}
+                    </button>
+                    <button onClick={()=>handleCheckout(PRICES.annual)} disabled={checkingOut}
+                      style={{background:"#1A1410",color:"white",border:"none",borderRadius:8,padding:"0.7rem 1.25rem",fontFamily:"sans-serif",fontWeight:700,fontSize:"0.9rem",cursor:"pointer"}}>
+                      {checkingOut ? "Loading..." : "Annual $149/yr"}
+                    </button>
+                  </div>
+                  <p style={{fontSize:"0.72rem",color:"#8A7F74",fontFamily:"sans-serif"}}>Secure payment via Stripe. Cancel anytime.</p>
+                  <button onClick={()=>setPaid(true)} style={{marginTop:"0.5rem",background:"none",border:"none",color:"#C4622D",fontSize:"0.75rem",cursor:"pointer",fontFamily:"sans-serif",textDecoration:"underline"}}>
+                    Already paid? Click here
+                  </button>
+                </div>
+              )}
+
               <div style={{display:"grid",gap:"0.8rem"}}>
-                {SECTIONS.map(sec=>{
+                {SECTIONS.filter(sec => paid || ["overview","schools","sales"].includes(sec.key)).map(sec=>{
                   const st=statusStyle(sec.key,report);
                   return(
                     <div key={sec.key} style={{background:"#FDFAF5",border:sec.key==="community"?"1.5px solid #F0C878":sec.key==="schools"?"1.5px solid #A5D6A7":sec.key==="overview"?"1.5px solid #90CAF9":"1px solid #DDD5C8",borderRadius:12,overflow:"hidden"}}>
@@ -429,3 +491,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
+
