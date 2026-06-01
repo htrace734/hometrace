@@ -5,9 +5,9 @@ export default async function handler(req, res) {
 
   const { priceId, address } = req.body;
 
-  // Determine mode based on price ID
-  const isSubscription = priceId === 'price_1TUCdyJPPKhF2pqbxndN225A' ||
-                         priceId === 'price_1TUCs1JPPKhF2pqb4Ibfv5Iz';
+  // Determine mode based on price ID (monthly + annual are subscriptions)
+  const isSubscription = priceId === 'price_1TdbkYJPPKhF2pqbRc5HINvW' ||
+                         priceId === 'price_1TdeKgJPPKhF2pqbr8gUMz5z';
   const mode = isSubscription ? 'subscription' : 'payment';
 
   try {
